@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: axovion-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - axovion-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: axovion-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - axovion-network
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: axovion-api
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - axovion-network
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: axovion-web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+    depends_on:
+      - api
+    networks:
+      - axovion-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  axovion-network:
+    driver: bridge
